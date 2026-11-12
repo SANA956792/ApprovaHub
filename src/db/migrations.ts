@@ -21,9 +21,8 @@ export async function runSchemaMigrations(pool: Pool): Promise<void> {
         ADD COLUMN IF NOT EXISTS created_at timestamp without time zone NOT NULL DEFAULT now()
     `);
 
-    // Earlier deployments may have created these Drizzle boolean fields as
-    // integers. Convert them in place, preserving 1/0 and treating NULL as the
-    // schema's default; no rows or tables are removed.
+    // Older deployments may have stored Drizzle boolean fields as integers.
+    // Convert in place, retaining every row and mapping NULLs to schema defaults.
     await client.query(`
       DO $migration$
       DECLARE
@@ -38,12 +37,12 @@ export async function runSchemaMigrations(pool: Pool): Promise<void> {
             ('is_active', true)
           ) AS flags(column_name, default_value)
         LOOP
-          SELECT data_type
+          SELECT columns.data_type
             INTO current_type
-            FROM information_schema.columns
-           WHERE table_schema = 'public'
-             AND table_name = 'request_categories'
-             AND column_name = flag.column_name;
+            FROM information_schema.columns AS columns
+           WHERE columns.table_schema = 'public'
+             AND columns.table_name = 'request_categories'
+             AND columns.column_name = flag.column_name;
 
           IF current_type IN ('smallint', 'integer', 'bigint') THEN
             EXECUTE format(
@@ -84,9 +83,8 @@ export async function runSchemaMigrations(pool: Pool): Promise<void> {
       $migration$;
     `);
 
-    // ON CONFLICT (name) requires a unique constraint/index. Do not remove or
-    // rewrite duplicate records: report them and abort this transaction so an
-    // operator can decide how to reconcile the preserved rows.
+    // ON CONFLICT (name) requires a unique constraint/index. Preserve and
+    // report duplicates rather than deleting or rewriting any category rows.
     await client.query(`
       DO $migration$
       DECLARE
@@ -115,96 +113,23 @@ export async function runSchemaMigrations(pool: Pool): Promise<void> {
       $migration$;
     `);
 
-    // Drizzle defines request_categories.id as serial (integer). Restore its
-    // sequence-backed default without changing any existing IDs or rows.
-    await client.query(`
-      DO $migration$
-      DECLARE
-        id_type text;
-        sequence_name regclass;
-        max_id bigint;
-        sequence_last_value bigint;
-        sequence_is_called boolean;
-      BEGIN
-        SELECT data_type
-          INTO id_type
-          FROM information_schema.columns
-         WHERE table_schema = 'public'
-           AND table_name = 'request_categories'
-           AND column_name = 'id';
-
-        IF id_type IS DISTINCT FROM 'integer' THEN
-          RAISE EXCEPTION
-            'Unexpected data type % for public.request_categories.id; Drizzle serial schema expects integer',
-            id_type;
-        END IF;
-
-        sequence_name := pg_get_serial_sequence(
-          'public.request_categories',
-          'id'
-        )::regclass;
-
-        IF sequence_name IS NULL THEN
-          EXECUTE 'CREATE SEQUENCE IF NOT EXISTS public.request_categories_id_seq';
-          sequence_name := pg_get_serial_sequence(
-            'public.request_categories',
-            'id'
-          )::regclass;
-
-          IF sequence_name IS NULL THEN
-            sequence_name := 'public.request_categories_id_seq'::regclass;
-          END IF;
-
-          EXECUTE format(
-            'ALTER SEQUENCE %s OWNED BY public.request_categories.id',
-            sequence_name
-          );
-        END IF;
-
-        EXECUTE format(
-          'ALTER TABLE public.request_categories ALTER COLUMN id SET DEFAULT nextval(%L::regclass)',
-          sequence_name::text
-        );
-
-        SELECT MAX(id)
-          INTO max_id
-          FROM public.request_categories;
-
-        EXECUTE format(
-          'SELECT last_value, is_called FROM %s',
-          sequence_name
-        ) INTO sequence_last_value, sequence_is_called;
-
-        IF max_id IS NULL THEN
-          -- Keep the current sequence position on an empty table; fresh
-          -- sequences begin at 1 with is_called=false.
-          IF sequence_last_value IS NULL THEN
-            PERFORM setval(sequence_name, 1, false);
-          END IF;
-        ELSIF sequence_last_value < max_id THEN
-          PERFORM setval(sequence_name, max_id, true);
-        ELSIF sequence_last_value = max_id AND NOT sequence_is_called THEN
-          -- The next nextval would otherwise repeat an ID already in the table.
-          PERFORM setval(sequence_name, max_id, true);
-        END IF;
-      END
-      $migration$;
-    `);
-
-    // Other tables using serial('id') follow the same schema pattern. Repair
-    // only their sequence defaults and positions; existing IDs remain intact.
+    // All id columns below are declared serial('id') in schema.ts. Restore
+    // sequence-backed defaults without changing existing IDs or rows.
     await client.query(`
       DO $migration$
       DECLARE
         target_table text;
         id_type text;
         sequence_name regclass;
+        candidate_name text;
+        suffix integer;
         max_id bigint;
         sequence_last_value bigint;
         sequence_is_called boolean;
       BEGIN
         FOREACH target_table IN ARRAY ARRAY[
           'users',
+          'request_categories',
           'requests',
           'request_attachments',
           'approval_history',
@@ -236,20 +161,23 @@ export async function runSchemaMigrations(pool: Pool): Promise<void> {
               target_table;
           END IF;
 
+          -- pg_get_serial_sequence uses PostgreSQL's dependency catalogs and
+          -- finds the sequence owned by this serial/identity column.
           sequence_name := pg_get_serial_sequence(
             format('public.%I', target_table),
             'id'
           )::regclass;
 
           IF sequence_name IS NULL THEN
-            EXECUTE format(
-              'CREATE SEQUENCE IF NOT EXISTS public.%I',
-              target_table || '_id_seq'
-            );
-            sequence_name := format(
-              'public.%I',
-              target_table || '_id_seq'
-            )::regclass;
+            candidate_name := target_table || '_id_seq';
+            suffix := 0;
+            WHILE to_regclass(format('public.%I', candidate_name)) IS NOT NULL LOOP
+              suffix := suffix + 1;
+              candidate_name := target_table || '_id_seq_' || suffix::text;
+            END LOOP;
+
+            EXECUTE format('CREATE SEQUENCE public.%I', candidate_name);
+            sequence_name := format('public.%I', candidate_name)::regclass;
             EXECUTE format(
               'ALTER SEQUENCE %s OWNED BY public.%I.id',
               sequence_name,
@@ -262,6 +190,7 @@ export async function runSchemaMigrations(pool: Pool): Promise<void> {
             target_table,
             sequence_name::text
           );
+
           EXECUTE format('SELECT MAX(id) FROM public.%I', target_table)
             INTO max_id;
           EXECUTE format(
@@ -269,6 +198,8 @@ export async function runSchemaMigrations(pool: Pool): Promise<void> {
             sequence_name
           ) INTO sequence_last_value, sequence_is_called;
 
+          -- Only advance a sequence when it is behind existing IDs. Never
+          -- rewind it. For empty tables, leave its current position untouched.
           IF max_id IS NOT NULL AND sequence_last_value < max_id THEN
             PERFORM setval(sequence_name, max_id, true);
           ELSIF max_id IS NOT NULL AND sequence_last_value = max_id
