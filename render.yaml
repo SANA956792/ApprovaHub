@@ -1,0 +1,51 @@
+services:
+  - type: web
+    name: approval-management-pwa
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npx tsx server.ts
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SQL_HOST
+        sync: false
+      - key: SQL_DB_NAME
+        sync: false
+      - key: SQL_USER
+        sync: false
+      - key: SQL_PASSWORD
+        sync: false
+      - key: SQL_ADMIN_USER
+        sync: false
+      - key: SQL_ADMIN_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SALMAN_ADMIN_PASSWORD
+        sync: false
+      - key: MUNAVVAR_ADMIN_PASSWORD
+        sync: false
+      - key: LEARNING_APP_ADMIN_PASSWORD
+        sync: false
+      - key: SALWA_ADMIN_MOBILE
+        sync: false
+      - key: SALWA_ADMIN_PASSWORD
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        value: mailto:admin@ibat.in
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        value: approval-attachments
+      - key: R2_ENDPOINT
+        sync: false
