@@ -115,6 +115,84 @@ export async function runSchemaMigrations(pool: Pool): Promise<void> {
       $migration$;
     `);
 
+    // Drizzle's serial('id') requires an integer column with an attached
+    // sequence-backed default. Repair this for every table using that schema
+    // pattern, retaining all existing IDs and moving each sequence past MAX(id).
+    await client.query(`
+      DO $migration$
+      DECLARE
+        table_name text;
+        id_type text;
+        sequence_name text;
+        max_id bigint;
+      BEGIN
+        FOREACH table_name IN ARRAY ARRAY[
+          'users',
+          'request_categories',
+          'requests',
+          'request_attachments',
+          'approval_history',
+          'groups',
+          'group_members',
+          'group_messages',
+          'notifications',
+          'push_subscriptions',
+          'app_settings'
+        ]
+        LOOP
+          IF to_regclass(format('public.%I', table_name)) IS NULL THEN
+            CONTINUE;
+          END IF;
+
+          SELECT data_type
+            INTO id_type
+            FROM information_schema.columns
+           WHERE table_schema = 'public'
+             AND table_name = table_name
+             AND column_name = 'id';
+
+          IF id_type IS NULL THEN
+            CONTINUE;
+          ELSIF id_type <> 'integer' THEN
+            RAISE EXCEPTION
+              'Unexpected data type % for public.%.id; Drizzle serial schema expects integer',
+              id_type,
+              table_name;
+          END IF;
+
+          sequence_name := pg_get_serial_sequence(
+            format('public.%I', table_name),
+            'id'
+          );
+
+          IF sequence_name IS NULL THEN
+            sequence_name := format('public.%I', table_name || '_id_seq');
+            EXECUTE format('CREATE SEQUENCE IF NOT EXISTS %s', sequence_name);
+            EXECUTE format(
+              'ALTER SEQUENCE %s OWNED BY public.%I.id',
+              sequence_name,
+              table_name
+            );
+          END IF;
+
+          EXECUTE format(
+            'ALTER TABLE public.%I ALTER COLUMN id SET DEFAULT nextval(%L::regclass)',
+            table_name,
+            sequence_name
+          );
+
+          EXECUTE format('SELECT MAX(id) FROM public.%I', table_name)
+            INTO max_id;
+          IF max_id IS NULL THEN
+            PERFORM setval(sequence_name::regclass, 1, false);
+          ELSE
+            PERFORM setval(sequence_name::regclass, max_id, true);
+          END IF;
+        END LOOP;
+      END
+      $migration$;
+    `);
+
     await client.query('COMMIT');
     console.info('Database schema migrations completed.');
   } catch (error) {
