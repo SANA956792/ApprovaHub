@@ -46,8 +46,6 @@ export async function runSchemaMigrations(pool: Pool): Promise<void> {
              AND column_name = flag.column_name;
 
           IF current_type IN ('smallint', 'integer', 'bigint') THEN
-            -- Drop the integer default before changing the underlying type;
-            -- PostgreSQL cannot always cast a legacy integer default itself.
             EXECUTE format(
               'ALTER TABLE public.request_categories ALTER COLUMN %I DROP DEFAULT',
               flag.column_name
@@ -82,6 +80,37 @@ export async function runSchemaMigrations(pool: Pool): Promise<void> {
             flag.column_name
           );
         END LOOP;
+      END
+      $migration$;
+    `);
+
+    // ON CONFLICT (name) requires a unique constraint/index. Do not remove or
+    // rewrite duplicate records: report them and abort this transaction so an
+    // operator can decide how to reconcile the preserved rows.
+    await client.query(`
+      DO $migration$
+      DECLARE
+        duplicate_names text;
+      BEGIN
+        SELECT string_agg(
+                 format('%L (%s rows)', name, row_count),
+                 ', ' ORDER BY name
+               )
+          INTO duplicate_names
+          FROM (
+            SELECT name, count(*) AS row_count
+              FROM public.request_categories
+             GROUP BY name
+            HAVING count(*) > 1
+          ) AS duplicates;
+
+        IF duplicate_names IS NOT NULL THEN
+          RAISE EXCEPTION
+            'Cannot create unique index on public.request_categories(name): duplicate names found: %',
+            duplicate_names;
+        END IF;
+
+        EXECUTE 'CREATE UNIQUE INDEX IF NOT EXISTS request_categories_name_unique_idx ON public.request_categories (name)';
       END
       $migration$;
     `);
