@@ -115,20 +115,96 @@ export async function runSchemaMigrations(pool: Pool): Promise<void> {
       $migration$;
     `);
 
-    // Drizzle's serial('id') requires an integer column with an attached
-    // sequence-backed default. Repair this for every table using that schema
-    // pattern, retaining all existing IDs and moving each sequence past MAX(id).
+    // Drizzle defines request_categories.id as serial (integer). Restore its
+    // sequence-backed default without changing any existing IDs or rows.
     await client.query(`
       DO $migration$
       DECLARE
-        table_name text;
         id_type text;
-        sequence_name text;
+        sequence_name regclass;
         max_id bigint;
+        sequence_last_value bigint;
+        sequence_is_called boolean;
       BEGIN
-        FOREACH table_name IN ARRAY ARRAY[
+        SELECT data_type
+          INTO id_type
+          FROM information_schema.columns
+         WHERE table_schema = 'public'
+           AND table_name = 'request_categories'
+           AND column_name = 'id';
+
+        IF id_type IS DISTINCT FROM 'integer' THEN
+          RAISE EXCEPTION
+            'Unexpected data type % for public.request_categories.id; Drizzle serial schema expects integer',
+            id_type;
+        END IF;
+
+        sequence_name := pg_get_serial_sequence(
+          'public.request_categories',
+          'id'
+        )::regclass;
+
+        IF sequence_name IS NULL THEN
+          EXECUTE 'CREATE SEQUENCE IF NOT EXISTS public.request_categories_id_seq';
+          sequence_name := pg_get_serial_sequence(
+            'public.request_categories',
+            'id'
+          )::regclass;
+
+          IF sequence_name IS NULL THEN
+            sequence_name := 'public.request_categories_id_seq'::regclass;
+          END IF;
+
+          EXECUTE format(
+            'ALTER SEQUENCE %s OWNED BY public.request_categories.id',
+            sequence_name
+          );
+        END IF;
+
+        EXECUTE format(
+          'ALTER TABLE public.request_categories ALTER COLUMN id SET DEFAULT nextval(%L::regclass)',
+          sequence_name::text
+        );
+
+        SELECT MAX(id)
+          INTO max_id
+          FROM public.request_categories;
+
+        EXECUTE format(
+          'SELECT last_value, is_called FROM %s',
+          sequence_name
+        ) INTO sequence_last_value, sequence_is_called;
+
+        IF max_id IS NULL THEN
+          -- Keep the current sequence position on an empty table; fresh
+          -- sequences begin at 1 with is_called=false.
+          IF sequence_last_value IS NULL THEN
+            PERFORM setval(sequence_name, 1, false);
+          END IF;
+        ELSIF sequence_last_value < max_id THEN
+          PERFORM setval(sequence_name, max_id, true);
+        ELSIF sequence_last_value = max_id AND NOT sequence_is_called THEN
+          -- The next nextval would otherwise repeat an ID already in the table.
+          PERFORM setval(sequence_name, max_id, true);
+        END IF;
+      END
+      $migration$;
+    `);
+
+    // Other tables using serial('id') follow the same schema pattern. Repair
+    // only their sequence defaults and positions; existing IDs remain intact.
+    await client.query(`
+      DO $migration$
+      DECLARE
+        target_table text;
+        id_type text;
+        sequence_name regclass;
+        max_id bigint;
+        sequence_last_value bigint;
+        sequence_is_called boolean;
+      BEGIN
+        FOREACH target_table IN ARRAY ARRAY[
           'users',
-          'request_categories',
           'requests',
           'request_attachments',
           'approval_history',
@@ -140,16 +216,16 @@ export async function runSchemaMigrations(pool: Pool): Promise<void> {
           'app_settings'
         ]
         LOOP
-          IF to_regclass(format('public.%I', table_name)) IS NULL THEN
+          IF to_regclass(format('public.%I', target_table)) IS NULL THEN
             CONTINUE;
           END IF;
 
-          SELECT data_type
+          SELECT columns.data_type
             INTO id_type
-            FROM information_schema.columns
-           WHERE table_schema = 'public'
-             AND table_name = table_name
-             AND column_name = 'id';
+            FROM information_schema.columns AS columns
+           WHERE columns.table_schema = 'public'
+             AND columns.table_name = target_table
+             AND columns.column_name = 'id';
 
           IF id_type IS NULL THEN
             CONTINUE;
@@ -157,36 +233,47 @@ export async function runSchemaMigrations(pool: Pool): Promise<void> {
             RAISE EXCEPTION
               'Unexpected data type % for public.%.id; Drizzle serial schema expects integer',
               id_type,
-              table_name;
+              target_table;
           END IF;
 
           sequence_name := pg_get_serial_sequence(
-            format('public.%I', table_name),
+            format('public.%I', target_table),
             'id'
-          );
+          )::regclass;
 
           IF sequence_name IS NULL THEN
-            sequence_name := format('public.%I', table_name || '_id_seq');
-            EXECUTE format('CREATE SEQUENCE IF NOT EXISTS %s', sequence_name);
+            EXECUTE format(
+              'CREATE SEQUENCE IF NOT EXISTS public.%I',
+              target_table || '_id_seq'
+            );
+            sequence_name := format(
+              'public.%I',
+              target_table || '_id_seq'
+            )::regclass;
             EXECUTE format(
               'ALTER SEQUENCE %s OWNED BY public.%I.id',
               sequence_name,
-              table_name
+              target_table
             );
           END IF;
 
           EXECUTE format(
             'ALTER TABLE public.%I ALTER COLUMN id SET DEFAULT nextval(%L::regclass)',
-            table_name,
-            sequence_name
+            target_table,
+            sequence_name::text
           );
-
-          EXECUTE format('SELECT MAX(id) FROM public.%I', table_name)
+          EXECUTE format('SELECT MAX(id) FROM public.%I', target_table)
             INTO max_id;
-          IF max_id IS NULL THEN
-            PERFORM setval(sequence_name::regclass, 1, false);
-          ELSE
-            PERFORM setval(sequence_name::regclass, max_id, true);
+          EXECUTE format(
+            'SELECT last_value, is_called FROM %s',
+            sequence_name
+          ) INTO sequence_last_value, sequence_is_called;
+
+          IF max_id IS NOT NULL AND sequence_last_value < max_id THEN
+            PERFORM setval(sequence_name, max_id, true);
+          ELSIF max_id IS NOT NULL AND sequence_last_value = max_id
+                AND NOT sequence_is_called THEN
+            PERFORM setval(sequence_name, max_id, true);
           END IF;
         END LOOP;
       END
