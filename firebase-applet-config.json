@@ -3,6 +3,7 @@
   "appId": "1:563989311661:web:0cecab067782f517249624",
   "apiKey": "AIzaSyCrXUHhH2HCcEbl9psMbQvrc0OFLikSrbk",
   "authDomain": "commanding-yarn-b3rp2.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-approval-8dab18ff-714c-4842-9e3c-451e2ef8c42e",
   "storageBucket": "commanding-yarn-b3rp2.firebasestorage.app",
   "messagingSenderId": "563989311661",
   "measurementId": "",

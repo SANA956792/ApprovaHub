@@ -1354,7 +1354,7 @@ export async function saveRequestAttachment(input: {
   fileType: string;
   fileSize: number;
   storageKey: string;
-  storageProvider: 'r2' | 'postgres';
+  storageProvider: 'supabase' | 'postgres' | 'r2';
   fileData: string | null;
   uploadedById: number;
 }) {

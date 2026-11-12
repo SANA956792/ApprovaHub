@@ -856,7 +856,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           <div className="p-3.5 rounded-xl bg-[#070e1a] border border-[#1e2f4d]">
             <p className="text-slate-400">Attachment Storage Mode</p>
             <p className="text-emerald-400 font-semibold mt-0.5">
-              {health?.storage?.mode || 'Cloudflare R2 / PostgreSQL Binary Store'}
+              {health?.storage?.mode || 'Supabase Storage / PostgreSQL Binary Store'}
             </p>
           </div>
         </div>

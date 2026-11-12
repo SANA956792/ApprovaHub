@@ -15,6 +15,7 @@
     "@aws-sdk/client-s3": "^3.1166.0",
     "@aws-sdk/s3-request-presigner": "^3.1166.0",
     "@google/genai": "^2.4.0",
+    "@supabase/supabase-js": "^2.119.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",

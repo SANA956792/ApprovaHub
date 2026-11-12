@@ -39,13 +39,9 @@ services:
         sync: false
       - key: VAPID_SUBJECT
         value: mailto:admin@ibat.in
-      - key: R2_ACCOUNT_ID
+      - key: SUPABASE_URL
         sync: false
-      - key: R2_ACCESS_KEY_ID
+      - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
-      - key: R2_SECRET_ACCESS_KEY
-        sync: false
-      - key: R2_BUCKET_NAME
+      - key: SUPABASE_BUCKET_NAME
         value: approval-attachments
-      - key: R2_ENDPOINT
-        sync: false

@@ -80,7 +80,7 @@ export const requestAttachments = pgTable('request_attachments', {
   fileType: text('file_type').notNull(),
   fileSize: integer('file_size').notNull(),
   storageKey: text('storage_key').notNull().unique(),
-  storageProvider: text('storage_provider').notNull().default('r2'), // 'r2' | 'postgres'
+  storageProvider: text('storage_provider').notNull().default('supabase'), // 'supabase' | 'postgres' | 'r2'
   fileData: text('file_data'), // Base64 payload when stored in PostgreSQL fallback
   uploadedById: integer('uploaded_by_id')
     .references(() => users.id)

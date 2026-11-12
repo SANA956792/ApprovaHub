@@ -559,7 +559,7 @@ export const NewRequestPage: React.FC<NewRequestPageProps> = ({
           )}
         </div>
 
-        {/* File Attachments (Cloudflare R2 / PostgreSQL Binary Store) */}
+        {/* File Attachments (Supabase Storage / PostgreSQL Binary Store) */}
         <div className="pt-2 border-t border-[#1a2b45]">
           <label className="block text-xs font-semibold text-slate-300 mb-1.5">
             Supporting Bills / Documents (Max 5 files, 10MB each)
@@ -570,7 +570,7 @@ export const NewRequestPage: React.FC<NewRequestPageProps> = ({
               Click to attach bills, invoices, receipts, or PDFs
             </span>
             <span className="text-[11px] text-slate-400 mt-0.5">
-              Stored permanently in Cloudflare R2 / PostgreSQL storage
+              Stored permanently in Supabase Storage / PostgreSQL storage
             </span>
             <input
               type="file"
@@ -1164,7 +1164,9 @@ export const RequestDetailsPage: React.FC<RequestDetailsPageProps> = ({
                       </p>
                       <p className="text-[11px] text-slate-400 font-mono tabular-nums">
                         {(att.fileSize / 1024).toFixed(1)} KB ·{' '}
-                        {att.storageProvider === 'r2'
+                        {att.storageProvider === 'supabase'
+                          ? 'Supabase Storage'
+                          : att.storageProvider === 'r2'
                           ? 'Cloudflare R2'
                           : 'Secured DB Store'}
                       </p>

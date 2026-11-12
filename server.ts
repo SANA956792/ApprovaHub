@@ -55,7 +55,7 @@ import {
 } from './src/middleware/auth.ts';
 import {
   getAttachmentSignedDownloadUrl,
-  getR2Status,
+  getStorageStatus,
   uploadAttachmentFile,
 } from './src/services/r2Storage.ts';
 import {
@@ -216,7 +216,7 @@ async function startServer() {
         status: 'healthy',
         service: 'APPROVAL Management System',
         timestamp: new Date().toISOString(),
-        storage: getR2Status(),
+        storage: getStorageStatus(),
       });
     } catch (error: any) {
       res.status(503).json({
@@ -797,7 +797,7 @@ async function startServer() {
           groupId: groupId ? Number(groupId) : null,
         });
 
-        // Upload attachments to Cloudflare R2 (or PostgreSQL binary store)
+        // Upload attachments to Supabase Storage (or PostgreSQL binary store fallback)
         const files = (req.files as Express.Multer.File[]) || [];
         const savedAttachments = [];
         for (const file of files) {
@@ -941,9 +941,13 @@ async function startServer() {
         // Verify user can access parent request
         await getRequestFullDetails(att.requestId, req.user!);
 
-        if (att.storageProvider === 'r2') {
+        if (
+          att.storageProvider === 'supabase' ||
+          att.storageProvider === 'r2'
+        ) {
           const signedUrl = await getAttachmentSignedDownloadUrl(
-            att.storageKey
+            att.storageKey,
+            att.storageProvider
           );
           if (signedUrl) {
             return res.redirect(signedUrl);
