@@ -79,7 +79,7 @@ export async function runSchemaMigrations(pool: Pool): Promise<void> {
             flag.column_name
           );
         END LOOP;
-      END
+      END;
       $migration$;
     `);
 
@@ -109,7 +109,7 @@ export async function runSchemaMigrations(pool: Pool): Promise<void> {
         END IF;
 
         EXECUTE 'CREATE UNIQUE INDEX IF NOT EXISTS request_categories_name_unique_idx ON public.request_categories (name)';
-      END
+      END;
       $migration$;
     `);
 
@@ -207,7 +207,7 @@ export async function runSchemaMigrations(pool: Pool): Promise<void> {
             PERFORM setval(sequence_name, max_id, true);
           END IF;
         END LOOP;
-      END
+      END;
       $migration$;
     `);
 
