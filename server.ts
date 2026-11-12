@@ -45,8 +45,8 @@ import {
   updateEmployeeRecord,
   updateGroupRecord,
 } from './src/db/repository.ts';
+import type { AuthRequest } from './src/middleware/auth.ts';
 import {
-  AuthRequest,
   loginRateLimiter,
   requireAuth,
   requireSuperAdmin,
