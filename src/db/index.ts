@@ -1,5 +1,6 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
+import { readFileSync } from 'node:fs';
 import * as schema from './schema.ts';
 import { runSchemaMigrations } from './migrations.ts';
 
@@ -14,7 +15,11 @@ export const createPool = () => {
       user: process.env.SQL_USER,
       password: process.env.SQL_PASSWORD,
       database: process.env.SQL_DB_NAME,
-      ssl: true,
+      port: 5432,
+      ssl: {
+        ca: readFileSync('/etc/secrets/supabase-ca.crt', 'utf8'),
+        rejectUnauthorized: true,
+      },
       max: 10,
       connectionTimeoutMillis: 15000,
     });
@@ -23,14 +28,15 @@ export const createPool = () => {
       console.error('Unexpected error on idle SQL pool client:', err);
     });
   }
+
   return global._postgresPool;
 };
 
 const pool = createPool();
 
-// Run additive migrations before exporting the database, so downstream modules
-// cannot call ensureInitialSetup() until schema reconciliation has completed.
 await runSchemaMigrations(pool);
 
 export const db = drizzle(pool, { schema });
 export { pool };
+
+
