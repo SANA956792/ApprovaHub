@@ -1,8 +1,8 @@
 // Custom Service Worker extension for Web Push (VAPID) notifications
 self.addEventListener('push', function (event) {
   let payload = {
-    title: 'APPROVAL Notification',
-    body: 'You have a new update in APPROVAL.',
+    title: 'IBAT OP',
+    body: 'You have a new update in IBAT OP.',
     icon: '/assets/aistudio/Ibat_Logo__2___1__de631039.png',
     badge: '/assets/aistudio/Ibat_Logo__2___1__de631039.png',
     url: '/',
