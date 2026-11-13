@@ -1,6 +1,6 @@
 {
-  "name": "APPROVAL Management System",
-  "description": "Production-ready enterprise approval workflow, employee management, real-time group collaboration, and reporting Progressive Web Application.",
+  "name": "IBAT OP",
+  "description": "IBAT OP enterprise approval workflow, employee management, real-time group collaboration, and reporting Progressive Web Application.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
