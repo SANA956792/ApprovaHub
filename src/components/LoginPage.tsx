@@ -150,14 +150,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           <div className="relative mb-4 rounded-2xl overflow-hidden border border-[#1e2f4d] shadow-xl bg-[#0d1726] p-1.5">
             <img
               src="/assets/aistudio/Ibat_Logo__2___1__de631039.png"
-              alt="Official APPROVAL Logo"
+              alt="IBAT OP Logo"
               referrerPolicy="no-referrer"
               className="w-20 h-20 object-contain rounded-xl"
             />
           </div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-bold tracking-tight text-white">
-              APPROVAL
+              IBAT OP
             </h1>
             <span className="text-xs font-medium text-emerald-400 border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded-md">
               PWA
@@ -206,7 +206,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   value={mobile}
                   onChange={(e) => setMobile(e.target.value)}
                   placeholder="Enter 10-digit mobile number"
-                  className="w-full h-11 pl-10 pr-4 rounded-xl bg-[#070e1a] border border-[#1e2f4d] text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition-colors tabular-nums"
+                  className="w-full h-11 pl-10 pr-4 rounded-xl bg-[#070e1a] border border-[#1e2f4d] text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
                 />
               </div>
             </div>
@@ -248,7 +248,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             type="button"
             onClick={handleGoogleSignIn}
             disabled={loading}
-            className="w-full h-11 rounded-xl bg-[#111e33] hover:bg-[#162640] border border-[#1e2f4d] text-slate-200 font-medium text-xs transition-colors flex items-center justify-center gap-2.5 cursor-pointer"
+            className="w-full h-11 rounded-xl bg-[#111e33] hover:bg-[#162640] border border-[#1e2f4d] text-slate-200 font-medium text-xs transition-colors flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
           >
             <UserCheck className="w-4 h-4 text-emerald-400" />
             Sign in with Authorized Google Account
@@ -262,7 +262,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               className="mt-3 w-full h-10 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 font-medium text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               <Download className="w-4 h-4" />
-              Install APPROVAL Mobile App (PWA)
+              Install IBAT OP
             </button>
           )}
         </div>
@@ -366,14 +366,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-[#0d1726] border border-[#1a2b45] p-6 shadow-2xl">
             <h3 className="text-base font-semibold text-white">
-              Install APPROVAL on iOS
+              Install IBAT OP on iOS
             </h3>
             <p className="mt-2 text-xs text-slate-300 leading-relaxed">
               1. Tap the <strong>Share</strong> icon in your Safari toolbar.
               <br />
               2. Scroll down and select <strong>Add to Home Screen</strong>.
               <br />
-              3. Open APPROVAL from your home screen for full-screen standalone
+              3. Open IBAT OP from your home screen for full-screen standalone
               mode and push notifications.
             </p>
             <button

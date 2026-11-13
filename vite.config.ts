@@ -19,10 +19,10 @@ export default defineConfig(() => {
         ],
         manifest: {
           id: '/',
-          name: 'APPROVAL Management System',
-          short_name: 'APPROVAL',
+          name: 'IBAT OP',
+          short_name: 'IBAT OP',
           description:
-            'Enterprise approval workflow, employee management, real-time group chat, and reporting PWA.',
+            'IBAT OP enterprise approval workflow, employee management, real-time group chat, and reporting PWA.',
           theme_color: '#070e1a',
           background_color: '#070e1a',
           display: 'standalone',
