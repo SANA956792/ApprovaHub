@@ -94,6 +94,20 @@ export default function App() {
     fetchCategories();
   }, [fetchDashboard, fetchCategories]);
 
+  // A 401 means the authentication credential is no longer valid. Do not clear
+  // the session on 403: that indicates an authorization/permission denial.
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      setAuthToken(null);
+      setUser(null);
+      setDashboardData(null);
+      setActivePage('dashboard');
+    };
+    window.addEventListener('approval:auth-expired', handleAuthExpired);
+    return () =>
+      window.removeEventListener('approval:auth-expired', handleAuthExpired);
+  }, []);
+
   // Restore session on mount & handle push notification URL parameters
   useEffect(() => {
     const token = getAuthToken();
@@ -119,7 +133,8 @@ export default function App() {
         }
       })
       .catch(() => {
-        setAuthToken(null);
+        // apiRequest clears credentials on 401 only. Permission errors (403)
+        // and transient network failures must not erase a valid stored session.
       })
       .finally(() => {
         setAuthChecking(false);
